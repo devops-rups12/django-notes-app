@@ -1,29 +1,41 @@
-@Library('Shared')_
 pipeline{
-    agent { label 'dev-server'}
-    
-    stages{
-        stage("Code clone"){
-            steps{
-                sh "whoami"
-            clone("https://github.com/LondheShubham153/django-notes-app.git","main")
-            }
+
+agent {label "jenkins"}
+
+stages{ 
+    stage("code"){
+        steps{
+            echo "this is cloneing the code"
+            git url: "https://github.com/LondheShubham153/django-notes-app.git",branch:"main"
+            echo "code cloning succussful"
         }
-        stage("Code Build"){
-            steps{
-            dockerbuild("notes-app","latest")
-            }
-        }
-        stage("Push to DockerHub"){
-            steps{
-                dockerpush("dockerHubCreds","notes-app","latest")
-            }
-        }
-        stage("Deploy"){
-            steps{
-                deploy()
-            }
-        }
-        
     }
+    stage("build"){
+        steps{
+            echo "this is building the code"
+            sh "docker build -t node-app:latest ."
+        }
+    }
+    stage("push to dockerhub"){
+        steps{
+            withCredentials([usernamePassword(
+                'credentialsId':"dockerhubcre",
+                passwordVariable:"dockerHubPass",
+                usernameVariable:"dockerHubUser")]){
+            echo "this is pusing the image to docker hub"
+            sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
+            sh "docker image tag node-app:latest ${env.dockerHubUser}/node-app:latest"
+            sh "docker push ${env.dockerHubUser}/node-app:latest"
+            }
+        }
+    }
+    stage("deploy"){
+        steps{
+            echo "this is deploying the code"
+            sh "docker compose up -d "
+        }
+    }
+    
+}
+
 }
